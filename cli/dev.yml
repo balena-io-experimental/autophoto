@@ -1,0 +1,31 @@
+device: usb:001,030
+output:
+  file: ./photo_%d.jpg
+
+shots:
+- camera:
+    zoom: "#ignored-for-now"
+    focus: "Near 1"
+    iso: "100"
+    aperture: "4"
+    shutter: "2"
+    format: "#ignored-for-now"
+
+  mount:
+    height: 456
+    tilt: 789
+
+  table:
+    angle: 60
+
+- camera:
+    focus: "Near 2"
+    iso: "200"
+    aperture: "4"
+    shutter: "1"
+
+- camera:
+    focus: "Near 3"
+    iso: "400"
+    aperture: "4"
+    shutter: "0.5"

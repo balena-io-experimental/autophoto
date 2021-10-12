@@ -1,0 +1,192 @@
+#!/usr/bin/env python3
+
+import argparse
+import sys
+
+import gphoto2 as gp
+import yaml
+
+
+def log(*args, **kwargs):
+    """Just as print() but goes to stderr"""
+
+    # TODO: replace by logging module
+
+    if "file" in kwargs:
+        kwargs.pop("file")
+
+    print(*args, file=sys.stderr, **kwargs)
+
+
+def load_config(config_file):
+    """Load autophoto configuration from a file"""
+
+    with open(config_file, "r") as f:
+        config = yaml.safe_load(f)
+
+    # TODO: validate?
+
+    return config
+
+
+def init_camera(camera_id):
+    """Initialize gphoto2 connection to the camera"""
+
+    # TODO: maybe turn into context manager to ensure gp_camera_exit ?
+    # TODO: no errors are handled
+
+    if camera_id is None:
+        cameras = []
+        for camera_tuple in gp.check_result(gp.gp_camera_autodetect()):
+            cameras.append(camera_tuple)
+
+        if len(cameras) < 1:
+            log("Automatic detection was not able to find any cameras")
+            return None
+
+        if len(cameras) > 1:
+            log(
+                "Automatic detection found multiple cameras, please pick one "
+                "explicitly"
+            )
+            return None
+
+        camera_id = cameras[0][1]
+
+    camera = gp.Camera()
+
+    port_info_list = gp.PortInfoList()
+    port_info_list.load()
+    idx = port_info_list.lookup_path(camera_id)
+    camera.set_port_info(port_info_list[idx])
+    camera.init()
+
+    return camera
+
+
+def get_cam_config(camera_config, name):
+    """Wraps gp_widget_get_child_by_name with check_result"""
+
+    return gp.check_result(gp.gp_widget_get_child_by_name(camera_config, name))
+
+
+def set_cam_config(widget, value):
+    """Wraps gp_widget_set_value with check_result"""
+
+    return gp.check_result(gp.gp_widget_set_value(widget, value))
+
+
+def cam_capture(camera):
+    """Wraps gp_camera_capture with check_result"""
+
+    return gp.check_result(gp.gp_camera_capture(camera, gp.GP_CAPTURE_IMAGE))
+
+
+def cam_find_file(camera, file_path):
+    """Wraps gp_camera_file_get with check_result"""
+
+    return gp.check_result(
+        gp.gp_camera_file_get(
+            camera, file_path.folder, file_path.name, gp.GP_FILE_TYPE_NORMAL
+        )
+    )
+
+
+def parse_args():
+    """Parse command line arguments"""
+
+    parser = argparse.ArgumentParser(description="autophoto CLI")
+
+    parser.add_argument(
+        "-i", "--interactive", default=False, action="store_true",
+        help="Enter interactive mode"
+    )
+    parser.add_argument(
+        "-o", "--output-file", default="-", help=(
+            "Where the configuration generated in interactive mode should "
+            "be stored, default is print to stdout"
+        )
+    )
+    parser.add_argument(
+        "-b", "--batch-file", help="Configuration file for batch operation"
+    )
+    parser.add_argument(
+        "-c", "--camera-id", help="Camera identifier for gphoto2"
+    )
+
+    return parser.parse_args()
+
+
+def run_interactive(camera):
+    """Run autophoto in interactive mode"""
+
+    log("Nobody has implemented this yet, surprised?")
+
+
+def run_batch(config_file, camera_id=None):
+    """Run autophoto in batch mode"""
+
+    config = load_config(config_file)
+    if camera_id is None:
+        camera_id = config.get("device")
+
+    camera = init_camera(camera_id)
+
+    camera_config = gp.check_result(gp.gp_camera_get_config(camera))
+
+    viewfinder_config = get_cam_config(camera_config, "viewfinder")
+    iso_config = get_cam_config(camera_config, "iso")
+    aperture_config = get_cam_config(camera_config, "aperture")
+    shutter_config = get_cam_config(camera_config, "shutterspeed")
+    focus_config = get_cam_config(camera_config, "manualfocusdrive")
+
+    format_config = get_cam_config(camera_config, "imageformat")
+
+    # Take the shots one by one
+    for i, shot in enumerate(config["shots"]):
+        # Set up the camera
+        set_cam_config(viewfinder_config, True) # Necessary for manual focus
+        set_cam_config(iso_config, shot["camera"]["iso"])
+        set_cam_config(shutter_config, shot["camera"]["shutter"])
+        set_cam_config(aperture_config, shot["camera"]["aperture"])
+        set_cam_config(focus_config, shot["camera"]["focus"])
+
+        gp.check_result(gp.gp_camera_set_config(camera, camera_config))
+
+        # Take the shot
+        file_path = cam_capture(camera)
+
+        # Download the file from the camera
+        camera_file = cam_find_file(camera, file_path)
+        dest_file = config["output"]["file"] % i
+        gp.check_result(gp.gp_file_save(camera_file, dest_file))
+
+    # Clean up
+    gp.check_result(gp.gp_camera_exit(camera))
+
+
+def main():
+    """Entry point for autophoto"""
+
+    args = parse_args()
+
+    if not args.interactive and args.batch_file is None:
+        log("You need to either pick interactive (-i) or batch (-c) mode")
+        sys.exit(2)
+
+    if args.interactive and args.batch_file is not None:
+        log(
+            "You have asked for both interactive (-i) and batch (-c) modes "
+            "at the same time, I will kindly ignore both requests until you "
+            "make your mind."
+        )
+        sys.exit(1)
+
+    if args.interactive:
+        return run_interactive(args.camera_id)
+
+    return run_batch(args.batch_file, args.camera_id)
+
+
+if __name__ == "__main__":
+    main()
