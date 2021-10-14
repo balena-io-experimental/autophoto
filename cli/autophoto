@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import subprocess
 import sys
 
 import gphoto2 as gp
@@ -27,6 +28,27 @@ def load_config(config_file):
     # TODO: validate?
 
     return config
+
+
+def start_ffmpeg(raw_video, port=8080, bind="0.0.0.0", format="mp4"):
+    """Run ffmpeg to turn raw video output to an HTTP stream"""
+
+    ffmpeg_cmd = [
+        "/usr/bin/ffmpeg",
+        "-i", "-",
+        "-vcodec", "rawvideo",
+        "-pix_fmt", "yuv420p",
+        "-threads", "0",
+        "-listen", "1",
+        "-f", format,
+        "http://%s:%d/autophoto.%s" % (bind, port, format)
+    ]
+    with open(os.devnull, "w") as null:
+        ffmpeg_proc = subprocess.Popen(
+            ffmpeg_cmd, stdin=subprocess.PIPE, stdout=null, stderr=null
+        )
+
+        return ffmpeg_proc
 
 
 def init_camera(camera_id):
@@ -117,10 +139,18 @@ def parse_args():
     return parser.parse_args()
 
 
-def run_interactive(camera):
+def run_interactive(camera_id=None):
     """Run autophoto in interactive mode"""
 
-    log("Nobody has implemented this yet, surprised?")
+    ffmpeg_proc = start_ffmpeg()
+
+    camera = init_camera(camera_id)
+    camera_config = gp.check_result(gp.gp_camera_get_config(camera))
+
+    while True:
+        capture = camera.capture_preview()
+        data = capture.get_data_and_size()
+        ffmpeg_proc.stdin.write(memoryview(data).tobytes())
 
 
 def run_batch(config_file, camera_id=None):
