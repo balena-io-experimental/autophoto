@@ -213,11 +213,15 @@ def parse_args():
     parser.add_argument(
         "-c", "--camera-id", help="Camera identifier for gphoto2"
     )
+    parser.add_argument(
+        "-p", "--photo-directory", default=".",
+        help="Directory where photos from interactive mode should be stored"
+    )
 
     return parser.parse_args()
 
 
-def run_interactive(camera_id=None, output_file=sys.stdout):
+def run_interactive(camera_id=None, output_file=sys.stdout, photo_directory="."):
     """Run autophoto in interactive mode"""
 
     tty = sys.stdin.isatty()
@@ -385,7 +389,8 @@ def run_interactive(camera_id=None, output_file=sys.stdout):
             file_path = cam_capture(camera)
 
             camera_file = cam_find_file(camera, file_path)
-            dest_file = "./autophoto_%03d.jpg" % photo_id
+            file_name = "autophoto_%03d.jpg" % photo_id
+            dest_file = os.path.join(photo_directory, file_name)
             gp.check_result(gp.gp_file_save(camera_file, dest_file))
 
             config["shots"].append({
@@ -472,9 +477,11 @@ def main():
     if args.interactive:
         if args.output_file != "-":
             with open(args.output_file, "w") as f:
-                return run_interactive(args.camera_id, f)
+                return run_interactive(args.camera_id, f, args.photo_directory)
 
-        return run_interactive(args.camera_id)
+        return run_interactive(
+            args.camera_id, photo_directory=args.photo_directory
+        )
 
     return run_batch(args.batch_file, args.camera_id)
 
