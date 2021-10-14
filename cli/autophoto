@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import json
 import os
 import subprocess
 import sys
@@ -381,7 +382,7 @@ def run_interactive(camera_id=None, output_file=sys.stdout, photo_directory=".")
                     ],
                 },
             }
-            yaml.dump(result, sys.stderr)
+            json.dump(result, sys.stderr)
             continue
 
         # Take picture
