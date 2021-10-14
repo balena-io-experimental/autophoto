@@ -2,7 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import './index.css';
 import reportWebVitals from './reportWebVitals';
-import { Accordion, Button, Checkbox, Box, Provider, Navbar,DropDownButton, Txt, Link} from 'rendition';
+import { Box, Provider, Navbar, Link, Form} from 'rendition';
 
 ReactDOM.render(
     <Provider>
@@ -15,43 +15,95 @@ ReactDOM.render(
     </Link>
     </Navbar>
     <Box my={3} mx={['auto', 15]}>
-    <Accordion
-    items={[
-	{
-	    label: 'Turntable',
-	    panel: <div>
-	    <DropDownButton label="Direction">
-	    <React.Fragment key=".0">
-	    <div>
-	    Clockwise
+    <div>
+	    <Form
+	    onFormSubmit={function noRefCheck(){alert("Success");}}
+	    schema={{
+		properties: {
+		    Direction: {
+			oneOf: [
+			    {
+				const: -1,
+				title: 'Clockwise'
+			    },
+			    {
+				const: 1,
+				title: 'Counter Clockwise'
+			    },
+			    {
+				const: 0,
+				title: 'Stationary'
+			    }			    
+			],
+			type:'number'
+		    },
+		    Speed: {
+			oneOf: [
+			    {
+				const: 5,
+				title: '5'
+			    },
+			    {
+				const: 10,
+				title: '10'
+			    },
+			    {
+				const: 15,
+				title: '15'
+			    }			    
+			],
+			type:'number'
+		    },
+		},
+		title: 'Turntable',
+		type: 'object'
+		    
+	    }}
+		/>	    
+    </div>
+    <div>
+    <Form
+	    onFormSubmit={function noRefCheck(){alert("Success");}}
+	    schema={{
+		properties: {
+		    Zoom: {
+			oneOf: [
+			    {
+				const: 'F16',
+				title: 'F16'
+			    },
+			    {
+				const: 'F8',
+				title: 'F8'
+			    },
+			    {
+				const: 'F2',
+				title: 'F2'
+			    }			    
+			],
+			type:'string'
+		    },
+		},
+		title: 'Camera',
+		type: 'object'
+		    
+	    }}
+		/>
 	    </div>
-	    <div>
-	    Counter Clockwise
-	    </div>
-	    <div>
-	    Stationary
-	    </div>
-	    </React.Fragment>
-	    </DropDownButton>
-	    </div>
-	},
-	{
-	    label: 'Camera',
-	    panel: <div>
-	    <Txt>Here you can configure some of the settings exposed by the DSLR. A lot more settings can be accessed by using the gphoto2 CLI directly</Txt>
-	    <br/><Checkbox label="Flash"/>
-	    </div>
-	},
-	{
-	    label: 'Lights',
-	    panel: 'Tweak the lighting here'
-	},
-    ]}
+ <div>
+	    <Form
+	    onFormSubmit={function noRefCheck(){alert("Success");}}
+	    schema={{
+		properties: {
+		    Power: {
+			type: 'boolean'
+		    },
+		},
+		title: 'Lights',
+		type: 'object'		
+	    }}
     />
-
-    <br/>
-    <br/>
-    <Button primary emphasized>Capture!</Button>
+    </div>
 
     </Box>
     </Provider>,
