@@ -201,12 +201,12 @@ def main():
     args = parse_args()
 
     if not args.interactive and args.batch_file is None:
-        log("You need to either pick interactive (-i) or batch (-c) mode")
+        log("You need to either pick interactive (-i) or batch (-b) mode")
         sys.exit(2)
 
     if args.interactive and args.batch_file is not None:
         log(
-            "You have asked for both interactive (-i) and batch (-c) modes "
+            "You have asked for both interactive (-i) and batch (-b) modes "
             "at the same time, I will kindly ignore both requests until you "
             "make your mind."
         )
