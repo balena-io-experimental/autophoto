@@ -220,16 +220,21 @@ def parse_args():
 def run_interactive(camera_id=None, output_file=sys.stdout):
     """Run autophoto in interactive mode"""
 
+    tty = sys.stdin.isatty()
+
     ffmpeg_proc = start_ffmpeg()
 
     camera = init_camera(camera_id)
     camera_config = CameraConfig(camera)
 
-    log("Welcome to autophoto CLI interactive mode")
-    log("Live preview is available on http://0.0.0.0:8080/autophoto.mjpg")
+    if tty:
+        log("Welcome to autophoto CLI interactive mode")
+        log("Live preview is available on http://0.0.0.0:8080/autophoto.mjpg")
 
     photo_id = 0
     config = {"output": {}, "shots": []}
+
+    prompt = ">>> " if tty else ""
 
     while True:
         # TODO: do this async to keep the "live preview" actually live
@@ -242,7 +247,7 @@ def run_interactive(camera_id=None, output_file=sys.stdout):
         """
 
         try:
-            input_line = input(">>> ")
+            input_line = input(prompt)
         except (EOFError, KeyboardInterrupt):
             break
 
@@ -256,6 +261,7 @@ def run_interactive(camera_id=None, output_file=sys.stdout):
             log("Available commands:")
             log("[A]perture")
             log("[C]apture")
+            log("[D]ump available configuration")
             log("[E]xposure")
             log("[F]ocus")
             log("[H]elp")
@@ -288,7 +294,7 @@ def run_interactive(camera_id=None, output_file=sys.stdout):
             if not args:
                 value = camera_config.exposure.get_value()
                 log("Current exposure value is: %s" % value)
-                log("Available values are: %s" % choices)
+                log("Available values are: %s" % ", ".join(choices))
                 continue
 
             camera_config.exposure = args
@@ -301,7 +307,7 @@ def run_interactive(camera_id=None, output_file=sys.stdout):
             if not args:
                 value = camera_config.focus.get_value()
                 log("Current focus value is: %s" % value)
-                log("Available values are: %s" % choices)
+                log("Available values are: %s" % ", ".join(choices))
                 continue
 
             camera_config.focus = args
@@ -314,7 +320,7 @@ def run_interactive(camera_id=None, output_file=sys.stdout):
             if not args:
                 value = camera_config.iso.get_value()
                 log("Current ISO value is: %s" % value)
-                log("Available values are: %s" % choices)
+                log("Available values are: %s" % ", ".join(choices))
                 continue
 
             camera_config.iso = args
@@ -337,6 +343,41 @@ def run_interactive(camera_id=None, output_file=sys.stdout):
 
         # Light configs
         if cmd == "l":
+            continue
+
+        # Dump available configuration
+        if cmd == "d":
+            result = {
+                "aperture": {
+                    "cli_key": "a",
+                    "current_value": str(camera_config.aperture.get_value()),
+                    "all_values": [
+                        str(c) for c in camera_config.aperture.get_choices()
+                    ],
+                },
+                "exposure": {
+                    "cli_key": "e",
+                    "current_value": str(camera_config.exposure.get_value()),
+                    "all_values": [
+                        str(c) for c in camera_config.exposure.get_choices()
+                    ],
+                },
+                "focus": {
+                    "cli_key": "f",
+                    "current_value": str(camera_config.focus.get_value()),
+                    "all_values": [
+                        str(c) for c in camera_config.focus.get_choices()
+                    ],
+                },
+                "iso": {
+                    "cli_key": "i",
+                    "current_value": str(camera_config.iso.get_value()),
+                    "all_values": [
+                        str(c) for c in camera_config.iso.get_choices()
+                    ],
+                },
+            }
+            yaml.dump(result, sys.stderr)
             continue
 
         # Take picture
@@ -367,9 +408,13 @@ def run_interactive(camera_id=None, output_file=sys.stdout):
         log("Unknown command: '%s'" % cmd)
         log("Maybe try 'h' for help?")
 
-    yaml.dump(config, output_file)
+    if config["shots"]:
+        yaml.dump(config, output_file)
+    elif tty:
+        log("No shots were taken, no need to save the config")
 
-    log("Bye bye!")
+    if tty:
+        log("Bye bye!")
 
 
 def run_batch(config_file, camera_id=None):
