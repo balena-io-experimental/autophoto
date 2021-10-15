@@ -2,8 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import './index.css';
 import reportWebVitals from './reportWebVitals';
-import { Box, Provider, Navbar, Link, Form} from 'rendition';
-import ReactPlayer from 'react-player';
+import { Box, Provider, Navbar, Link, Form, Img} from 'rendition';
 
 
 ReactDOM.render(
@@ -19,8 +18,9 @@ ReactDOM.render(
     Live view
     </Link>
     </Navbar>
-    <Box my={3} mx={['auto', 15]}>
-    <ReactPlayer url='http://0.0.0.0:8080/autophoto.mjpg' />
+	<Box my={3} mx={['auto', 15]}>
+	    <Img src="http://10.2.233.34:8080/autophoto.mjpg/?action=stream" />
+
     <div>
     <Form
     submitButtonText="Shoot!"
