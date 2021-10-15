@@ -15,7 +15,7 @@ shots:
     tilt: 120
 
   table:
-    angle: 60
+    steps: 0
 
   light:
     enabled: true
@@ -28,8 +28,15 @@ shots:
     aperture: "10"
     exposure: "1"
 
+  table:
+    steps: 0
+
+
 - camera:
     focus: "Far 1"
     iso: "400"
     aperture: "10"
     exposure: "0.5"
+
+  table:
+    steps: 0
