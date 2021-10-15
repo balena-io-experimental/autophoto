@@ -1,0 +1,490 @@
+#!/usr/bin/env python3
+
+import argparse
+import os
+import subprocess
+import sys
+
+import gphoto2 as gp
+import yaml
+
+
+class CameraConfig(object):
+
+    def __init__(self, camera):
+        self._camera = camera
+
+        self._config = gp.check_result(gp.gp_camera_get_config(camera))
+
+        self._aperture_config = self._get_config("aperture")
+        self._exposure_config = self._get_config("shutterspeed")
+        self._focus_config = self._get_config("manualfocusdrive")
+        self._iso_config = self._get_config("iso")
+        self._viewfinder_config = self._get_config("viewfinder")
+
+
+    def _get_config(self, name):
+        return gp.check_result(
+            gp.gp_widget_get_child_by_name(self._config, name)
+        )
+
+
+    @property
+    def camera(self):
+        return self._camera
+
+
+    @property
+    def config(self):
+        return self._config
+
+
+    @property
+    def aperture(self):
+        return self._aperture_config
+
+    @aperture.setter
+    def aperture(self, value):
+        return gp.check_result(
+            gp.gp_widget_set_value(self._aperture_config, value)
+        )
+
+
+    @property
+    def exposure(self):
+        return self._exposure_config
+
+    @exposure.setter
+    def exposure(self, value):
+        return gp.check_result(
+            gp.gp_widget_set_value(self._exposure_config, value)
+        )
+
+
+    @property
+    def focus(self):
+        return self._focus_config
+
+    @focus.setter
+    def focus(self, value):
+        return gp.check_result(
+            gp.gp_widget_set_value(self._focus_config, value)
+        )
+
+
+    @property
+    def iso(self):
+        return self._iso_config
+
+    @iso.setter
+    def iso(self, value):
+        return gp.check_result(
+            gp.gp_widget_set_value(self._iso_config, value)
+        )
+
+
+    @property
+    def viewfinder(self):
+        return self._viewfinder_config
+
+    @viewfinder.setter
+    def viewfinder(self, value):
+        return gp.check_result(
+            gp.gp_widget_set_value(self._viewfinder_config, value)
+        )
+
+
+    def apply(self):
+        return gp.check_result(
+            gp.gp_camera_set_config(self._camera, self._config)
+        )
+
+
+def log(*args, **kwargs):
+    """Just as print() but goes to stderr"""
+
+    # TODO: replace by logging module
+
+    if "file" in kwargs:
+        kwargs.pop("file")
+
+    print(*args, file=sys.stderr, **kwargs)
+
+
+def load_config(config_file):
+    """Load autophoto configuration from a file"""
+
+    with open(config_file, "r") as f:
+        config = yaml.safe_load(f)
+
+    # TODO: validate?
+
+    return config
+
+
+def start_ffmpeg(port=8080, bind="0.0.0.0"):
+    """Run ffmpeg to turn raw video output to an HTTP stream"""
+
+    ffmpeg_cmd = [
+        "/usr/bin/ffmpeg",
+        "-re",
+        "-i", "pipe:0",
+        "-listen", "1",
+        "-f", "mjpeg",
+        "http://%s:%d/autophoto.mjpg" % (bind, port)
+    ]
+    with open(os.devnull, "w") as null:
+        ffmpeg_proc = subprocess.Popen(
+            ffmpeg_cmd, stdin=subprocess.PIPE, stdout=null, stderr=null
+        )
+
+        return ffmpeg_proc
+
+
+def init_camera(camera_id):
+    """Initialize gphoto2 connection to the camera"""
+
+    # TODO: maybe turn into context manager to ensure gp_camera_exit ?
+    # TODO: no errors are handled
+
+    if camera_id is None:
+        cameras = []
+        for camera_tuple in gp.check_result(gp.gp_camera_autodetect()):
+            cameras.append(camera_tuple)
+
+        if len(cameras) < 1:
+            log("Automatic detection was not able to find any cameras")
+            return None
+
+        if len(cameras) > 1:
+            log(
+                "Automatic detection found multiple cameras, please pick one "
+                "explicitly"
+            )
+            return None
+
+        camera_id = cameras[0][1]
+
+    camera = gp.Camera()
+
+    port_info_list = gp.PortInfoList()
+    port_info_list.load()
+    idx = port_info_list.lookup_path(camera_id)
+    camera.set_port_info(port_info_list[idx])
+    camera.init()
+
+    return camera
+
+
+def cam_capture(camera):
+    """Wraps gp_camera_capture with check_result"""
+
+    return gp.check_result(gp.gp_camera_capture(camera, gp.GP_CAPTURE_IMAGE))
+
+
+def cam_find_file(camera, file_path):
+    """Wraps gp_camera_file_get with check_result"""
+
+    return gp.check_result(
+        gp.gp_camera_file_get(
+            camera, file_path.folder, file_path.name, gp.GP_FILE_TYPE_NORMAL
+        )
+    )
+
+
+def parse_args():
+    """Parse command line arguments"""
+
+    parser = argparse.ArgumentParser(description="autophoto CLI")
+
+    parser.add_argument(
+        "-i", "--interactive", default=False, action="store_true",
+        help="Enter interactive mode"
+    )
+    parser.add_argument(
+        "-o", "--output-file", default="-", help=(
+            "Where the configuration generated in interactive mode should "
+            "be stored, default is print to stdout"
+        )
+    )
+    parser.add_argument(
+        "-b", "--batch-file", help="Configuration file for batch operation"
+    )
+    parser.add_argument(
+        "-c", "--camera-id", help="Camera identifier for gphoto2"
+    )
+    parser.add_argument(
+        "-p", "--photo-directory", default=".",
+        help="Directory where photos from interactive mode should be stored"
+    )
+
+    return parser.parse_args()
+
+
+def run_interactive(camera_id=None, output_file=sys.stdout, photo_directory="."):
+    """Run autophoto in interactive mode"""
+
+    tty = sys.stdin.isatty()
+
+    ffmpeg_proc = start_ffmpeg()
+
+    camera = init_camera(camera_id)
+    camera_config = CameraConfig(camera)
+
+    if tty:
+        log("Welcome to autophoto CLI interactive mode")
+        log("Live preview is available on http://0.0.0.0:8080/autophoto.mjpg")
+
+    photo_id = 0
+    config = {"output": {}, "shots": []}
+
+    prompt = ">>> " if tty else ""
+
+    while True:
+        # TODO: do this async to keep the "live preview" actually live
+        """
+        capture = camera.capture_preview()
+        data = capture.get_data_and_size()
+        if ffmpeg_proc.poll() is None:
+            ffmpeg_proc.stdin.write(memoryview(data).tobytes())
+        continue
+        """
+
+        try:
+            input_line = input(prompt)
+        except (EOFError, KeyboardInterrupt):
+            break
+
+        cmd = input_line
+        args = None
+        if " " in input_line:
+            cmd, args = input_line.split(" ", 1)
+        cmd = cmd.lower()
+
+        if cmd == "h":
+            log("Available commands:")
+            log("[A]perture")
+            log("[C]apture")
+            log("[D]ump available configuration")
+            log("[E]xposure")
+            log("[F]ocus")
+            log("[H]elp")
+            log("hei[G]ht")
+            log("[I]SO")
+            log("[L]ight")
+            log("[R]otate")
+            log("[T]ilt")
+            log("e[X]it")
+
+            continue
+
+        # Camera configs
+        if cmd == "a":
+            choices = [str(c) for c in camera_config.aperture.get_choices()]
+
+            if not args:
+                value = camera_config.aperture.get_value()
+                log("Current aperture value is: %s" % value)
+                log("Available values are: %s" % ", ".join(choices))
+                continue
+
+            camera_config.aperture = args
+            camera_config.apply()
+            continue
+
+        if cmd == "e":
+            choices = [str(c) for c in camera_config.exposure.get_choices()]
+
+            if not args:
+                value = camera_config.exposure.get_value()
+                log("Current exposure value is: %s" % value)
+                log("Available values are: %s" % ", ".join(choices))
+                continue
+
+            camera_config.exposure = args
+            camera_config.apply()
+            continue
+
+        if cmd == "f":
+            choices = [str(c) for c in camera_config.focus.get_choices()]
+
+            if not args:
+                value = camera_config.focus.get_value()
+                log("Current focus value is: %s" % value)
+                log("Available values are: %s" % ", ".join(choices))
+                continue
+
+            camera_config.focus = args
+            camera_config.apply()
+            continue
+
+        if cmd == "i":
+            choices = [str(c) for c in camera_config.iso.get_choices()]
+
+            if not args:
+                value = camera_config.iso.get_value()
+                log("Current ISO value is: %s" % value)
+                log("Available values are: %s" % ", ".join(choices))
+                continue
+
+            camera_config.iso = args
+            camera_config.apply()
+            continue
+
+        # Mount configs
+        if cmd == "g":
+            # TODO
+            continue
+
+        if cmd == "t":
+            # TODO
+            continue
+
+        # Turntable configs
+        if cmd == "r":
+            # TODO
+            continue
+
+        # Light configs
+        if cmd == "l":
+            continue
+
+        # Dump available configuration
+        if cmd == "d":
+            result = {
+                "aperture": {
+                    "cli_key": "a",
+                    "current_value": str(camera_config.aperture.get_value()),
+                    "all_values": [
+                        str(c) for c in camera_config.aperture.get_choices()
+                    ],
+                },
+                "exposure": {
+                    "cli_key": "e",
+                    "current_value": str(camera_config.exposure.get_value()),
+                    "all_values": [
+                        str(c) for c in camera_config.exposure.get_choices()
+                    ],
+                },
+                "focus": {
+                    "cli_key": "f",
+                    "current_value": str(camera_config.focus.get_value()),
+                    "all_values": [
+                        str(c) for c in camera_config.focus.get_choices()
+                    ],
+                },
+                "iso": {
+                    "cli_key": "i",
+                    "current_value": str(camera_config.iso.get_value()),
+                    "all_values": [
+                        str(c) for c in camera_config.iso.get_choices()
+                    ],
+                },
+            }
+            yaml.dump(result, sys.stderr)
+            continue
+
+        # Take picture
+        if cmd == "c":
+            file_path = cam_capture(camera)
+
+            camera_file = cam_find_file(camera, file_path)
+            file_name = "autophoto_%03d.jpg" % photo_id
+            dest_file = os.path.join(photo_directory, file_name)
+            gp.check_result(gp.gp_file_save(camera_file, dest_file))
+
+            config["shots"].append({
+                "camera": {
+                    "aperture": str(camera_config.aperture.get_value()),
+                    "exposure": str(camera_config.exposure.get_value()),
+                    "focus": str(camera_config.focus.get_value()),
+                    "iso": str(camera_config.iso.get_value()),
+                }
+            })
+
+            photo_id += 1
+
+            continue
+
+        # Exit
+        if cmd == "x":
+            break
+
+        log("Unknown command: '%s'" % cmd)
+        log("Maybe try 'h' for help?")
+
+    if config["shots"]:
+        yaml.dump(config, output_file)
+    elif tty:
+        log("No shots were taken, no need to save the config")
+
+    if tty:
+        log("Bye bye!")
+
+
+def run_batch(config_file, camera_id=None):
+    """Run autophoto in batch mode"""
+
+    config = load_config(config_file)
+    if camera_id is None:
+        camera_id = config.get("device")
+
+    camera = init_camera(camera_id)
+
+    camera_config = CameraConfig(camera)
+
+    # Take the shots one by one
+    for i, shot in enumerate(config["shots"]):
+        # Set up the camera
+        camera_config.viewfinder = True # Necessary for manual focus
+
+        camera_config.aperture = shot["camera"]["aperture"]
+        camera_config.exposure = shot["camera"]["exposure"]
+        camera_config.focus = shot["camera"]["focus"]
+        camera_config.iso = shot["camera"]["iso"]
+
+        camera_config.apply()
+
+        # Take the shot
+        file_path = cam_capture(camera)
+
+        # Download the file from the camera
+        camera_file = cam_find_file(camera, file_path)
+        dest_file = config["output"]["file"] % i
+        gp.check_result(gp.gp_file_save(camera_file, dest_file))
+
+    # Clean up
+    gp.check_result(gp.gp_camera_exit(camera))
+
+
+def main():
+    """Entry point for autophoto"""
+
+    args = parse_args()
+
+    if not args.interactive and args.batch_file is None:
+        log("You need to either pick interactive (-i) or batch (-b) mode")
+        sys.exit(2)
+
+    if args.interactive and args.batch_file is not None:
+        log(
+            "You have asked for both interactive (-i) and batch (-b) modes "
+            "at the same time, I will kindly ignore both requests until you "
+            "make your mind."
+        )
+        sys.exit(1)
+
+    if args.interactive:
+        if args.output_file != "-":
+            with open(args.output_file, "w") as f:
+                return run_interactive(args.camera_id, f, args.photo_directory)
+
+        return run_interactive(
+            args.camera_id, photo_directory=args.photo_directory
+        )
+
+    return run_batch(args.batch_file, args.camera_id)
+
+
+if __name__ == "__main__":
+    main()
