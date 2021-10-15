@@ -2,7 +2,8 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import './index.css';
 import reportWebVitals from './reportWebVitals';
-import { Box, Provider, Navbar, Link, Form} from 'rendition';
+import { Box, Provider, Navbar, Link, Form, Img} from 'rendition';
+
 
 ReactDOM.render(
     <Provider>
@@ -17,9 +18,12 @@ ReactDOM.render(
     Live view
     </Link>
     </Navbar>
-    <Box my={3} mx={['auto', 15]}>
+	<Box my={3} mx={['auto', 15]}>
+	    <Img src="http://10.2.233.34:8080/autophoto.mjpg/?action=stream" />
+
     <div>
     <Form
+    submitButtonText="Shoot!"
     onFormSubmit={
 	function noRefCheck(result){
 	    console.log(result.formData);
@@ -29,7 +33,7 @@ ReactDOM.render(
 		    method: "POST",
 		    headers: {
 			Accept: "application/json",
-			
+
 			"Content-Type": "application/json",
 		    },
 		    body: JSON.stringify(
@@ -40,47 +44,42 @@ ReactDOM.render(
 		});
 	    } catch (e) {
 		console.error('Error',e);
-	    }	    		
+	    }
 	}
     }
-	schema={{
-	    properties: {
+    schema={{
+	properties: {
 	    Direction: {
-		title: 'Direction of rotation',
 		oneOf: [
 		    {
-			const: -1,
+			const: 'CW',
 			title: 'Clockwise'
 		    },
 		    {
-			const: 1,
-			title: 'Counter Clockwise'
-		    },
-		    {
-			const: 0,
-			title: 'Stationary'
-		    }			    
+			const: 'CCW',
+			title: 'Counter clockwise'
+		    }
 		],
-		type:'number'
+		type: 'string'
 	    },
 	    Speed: {
 		title : 'Rotation speed',
 		oneOf: [
 		    {
-			const: 5,
-			title: '5'
+			const : '0',
+			title: '0'
 		    },
 		    {
-			const: 10,
-			title: '10'
+			const: '0.5',
+			title: '0.5'
 		    },
 		    {
-			const: 15,
-			title: '15'
-		    }			    
+			const: '1',
+			title: '1'
+		    }
 		],
-		type:'number'
-	    },		    
+		type:'string'
+	    },
 	    Focus: {
 		title : 'Lens Focus',
 		oneOf: [
@@ -135,7 +134,7 @@ ReactDOM.render(
 		    },
 		    {
 			const: '7.1',
-			title: '7.1'			
+			title: '7.1'
 		    },
 		    {
 			const: '8',
@@ -155,7 +154,7 @@ ReactDOM.render(
 		    },
 		    {
 			const: '13',
-			title: '13'			
+			title: '13'
 		    },
 		    {
 			const: '14',
@@ -167,7 +166,7 @@ ReactDOM.render(
 		    },
 		    {
 			const: '18',
-			title: '18'			
+			title: '18'
 		    },
 		    {
 			const: '20',
@@ -176,13 +175,13 @@ ReactDOM.render(
 		    {
 			const: '22',
 			title: '22'
-		    }		    
+		    }
 		],
 		type: 'string'
 	    },
-		ISO : {
-		    oneOf:[
-			{
+	    ISO : {
+		oneOf:[
+		    {
 			const : 'auto',
 			      title: 'Auto'
 		    }
@@ -190,7 +189,7 @@ ReactDOM.render(
 		type: 'string'
 	    },
 	    Exposure : {
-		oneOf: [
+		oneOf:[
 		    {
 			const: '30',
 			title: '30'
@@ -209,7 +208,7 @@ ReactDOM.render(
 		    },
 		    {
 			const: '13',
-			title: '13'			
+			title: '13'
 		    },
 		    {
 			const: '10',
@@ -221,7 +220,7 @@ ReactDOM.render(
 		    },
 		    {
 			const: '6',
-			title: '6'			
+			title: '6'
 		    },
 		    {
 			const: '5',
@@ -249,7 +248,7 @@ ReactDOM.render(
 		    },
 		    {
 			const: '1.3',
-			title: '1.3'			
+			title: '1.3'
 		    },
 		    {
 			const: '1',
@@ -261,7 +260,7 @@ ReactDOM.render(
 		    },
 		    {
 			const: '0.6',
-			title: '0.6'			
+			title: '0.6'
 		    },
 		    {
 			const: '0.5',
@@ -269,20 +268,147 @@ ReactDOM.render(
 		    },
 		    {
 			const: '0.4',
-			title: '04'
-		    }   
+			title: '0.4'
+		    },
+		    {
+			const: '0.3',
+			title: '0.3'
+		    },
+		    {
+			const: '1/4',
+			title: '1/4'
+		    },
+		    {
+			const: '1/5',
+			title: '1/5'
+		    },
+		    {
+			const: '1/6',
+			title: '1/6'
+		    },
+		    {
+			const: '1/8',
+			title: '1/8'
+		    },
+		    {
+			const: '1/10',
+			title: '1/10'
+		    },
+		    {
+			const: '1/13',
+			title: '1/13'
+		    },
+		    {
+			const: '1/15',
+			title: '1/15'
+		    },
+		    {
+			const: '1/20',
+			title: '1/20'
+		    },
+		    {
+			const: '1/25',
+			title: '1/25'
+		    },
+		    {
+			const: '1/30',
+			title: '1/30'
+		    },
+		    {
+			const: '1/40',
+			title: '1/40'
+		    },
+		    {
+			const: '1/50',
+			title: '1/50'
+		    },
+		    {
+			const: '1/60',
+			title: '1/60'
+		    },
+		    {
+			const: '1/80',
+			title: '1/80'
+		    },
+		    {
+			const: '1/100',
+			title: '1/100'
+		    },
+		    {
+			const: '1/125',
+			title: '1/125'
+		    },
+		    {
+			const: '1/160',
+			title: '1/160'
+		    },
+		    {
+			const: '1/200',
+			title: '1/200'
+		    },
+		    {
+			const: '1/250',
+			title: '1/250'
+		    },
+		    {
+			const: '1/320',
+			title: '1/320'
+		    },
+		    {
+			const: '1/400',
+			title: '1/400'
+		    },
+		    {
+			const: '1/500',
+			title: '1/500'
+		    },
+		    {
+			const: '1/640',
+			title: '1/640'
+		    },
+		    {
+			const: '1/800',
+			title: '1/800'
+		    },
+		    {
+			const: '1/1000',
+			title: '1/1000'
+		    },
+		    {
+			const: '1/1250',
+			title: '1/1250'
+		    },
+		    {
+			const: '1/1600',
+			title: '1/1600'
+		    },
+		    {
+			const: '1/2000',
+			title: '1/2000'
+		    },
+		    {
+			const: '1/2500',
+			title: '1/2500'
+		    },
+		    {
+			const: '1/3200',
+			title: '1/3200'
+		    },
+		    {
+			const: '1/4000',
+			title: '1/4000'
+		    }
 		],
 		type : 'string'
 	    },
-		Power: {
-		    title: 'Light on',
-		    type: 'boolean'
-		},
+	    Power: {
+		title: 'Light on',
+		type: 'boolean'
 	    },
-	    title: 'Photobooth Settings',
-	    type: 'object'		
-	}}
-    submitButtonText="Smile!"
+	},
+	title: 'Photobooth Settings',
+	type: 'object'
+    }}
     />
     </div>
 
