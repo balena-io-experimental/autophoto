@@ -11,6 +11,10 @@ import sys
 import gphoto2 as gp
 import yaml
 
+# Imported lazily in turn_table at this moment
+# So that development is possible without the HW
+#import mechanics
+
 
 class CameraConfig(object):
 
@@ -195,6 +199,27 @@ def cam_find_file(camera, file_path):
     )
 
 
+def turn_table(steps):
+    try:
+        import mechanics
+    except Exception as ex:
+        log("Failed to import the mechanics library: %s" % ex)
+        log("Turntable control will not work")
+        return False
+
+    turn = mechanics.turntable_clockwise
+    if steps < 0:
+        mechanics.turntable_anticlockwise
+
+    try:
+        turn(abs(steps))
+    except Exception as ex:
+        log("Failed to rotate the table: %s" % ex)
+        return False
+
+    return True
+
+
 def parse_args():
     """Parse command line arguments"""
 
@@ -270,15 +295,16 @@ def run_interactive(camera_id=None, output_file=sys.stdout, photo_directory=".")
 
         return
 
+    # child - camera control
     sys.stdin.close()
 
     ffmpeg_proc = start_ffmpeg()
 
-    # child - camera control
     camera = init_camera(camera_id)
     camera_config = CameraConfig(camera)
 
     photo_id = 0
+    table_steps = 0
     config = {"output": {}, "shots": []}
 
     while True:
@@ -374,7 +400,15 @@ def run_interactive(camera_id=None, output_file=sys.stdout, photo_directory=".")
 
         # Turntable configs
         if cmd == "r":
-            # TODO
+            try:
+                steps = int(args)
+            except ValueError:
+                log("'%s' is not a valid number of steps for the turntable")
+                continue
+
+            if turn_table(steps):
+                table_steps += steps
+
             continue
 
         # Light configs
@@ -431,7 +465,10 @@ def run_interactive(camera_id=None, output_file=sys.stdout, photo_directory=".")
                     "exposure": str(camera_config.exposure.get_value()),
                     "focus": str(camera_config.focus.get_value()),
                     "iso": str(camera_config.iso.get_value()),
-                }
+                },
+                "table": {
+                    "steps": table_steps,
+                },
             })
 
             photo_id += 1
@@ -483,6 +520,9 @@ def run_batch(config_file, camera_id=None):
         camera_config.iso = shot["camera"]["iso"]
 
         camera_config.apply()
+
+        # Set up the turntable
+        turn_table(shot["table"]["steps"])
 
         # Take the shot
         file_path = cam_capture(camera)
