@@ -2,7 +2,9 @@
 
 import argparse
 import json
+import multiprocessing
 import os
+import queue
 import subprocess
 import sys
 
@@ -227,40 +229,69 @@ def run_interactive(camera_id=None, output_file=sys.stdout, photo_directory=".")
 
     tty = sys.stdin.isatty()
 
+    camera_queue = multiprocessing.Queue()
+
+    pid = os.fork()
+    if pid < 0:
+        log("forking camera control process failed")
+        return
+
+    if pid > 0:
+        # parent - CLI communication
+        if tty:
+            log("Welcome to autophoto CLI interactive mode")
+            log("Live preview is available on http://0.0.0.0:8080/autophoto.mjpg")
+
+        prompt = ">>> " if tty else ""
+
+        while True:
+            try:
+                input_line = input(prompt)
+            except (EOFError, KeyboardInterrupt):
+                camera_queue.put(("x", None)) # Make the child exit as well
+                break
+
+            cmd = input_line
+            args = None
+            if " " in input_line:
+                cmd, args = input_line.split(" ", 1)
+            cmd = cmd.lower()
+
+            camera_queue.put((cmd, args))
+
+            if cmd == "x":
+                break
+
+        # Clean up child
+
+        # The camera process should shut itself down based on the queue message
+        # just wait until this happens
+        os.waitpid(pid, 0)
+
+        return
+
+    sys.stdin.close()
+
     ffmpeg_proc = start_ffmpeg()
 
+    # child - camera control
     camera = init_camera(camera_id)
     camera_config = CameraConfig(camera)
-
-    if tty:
-        log("Welcome to autophoto CLI interactive mode")
-        log("Live preview is available on http://0.0.0.0:8080/autophoto.mjpg")
 
     photo_id = 0
     config = {"output": {}, "shots": []}
 
-    prompt = ">>> " if tty else ""
-
     while True:
-        # TODO: do this async to keep the "live preview" actually live
-        """
-        capture = camera.capture_preview()
-        data = capture.get_data_and_size()
-        if ffmpeg_proc.poll() is None:
-            ffmpeg_proc.stdin.write(memoryview(data).tobytes())
-        continue
-        """
-
         try:
-            input_line = input(prompt)
-        except (EOFError, KeyboardInterrupt):
-            break
+            cmd, args = camera_queue.get_nowait()
+        except queue.Empty:
+            capture = camera.capture_preview()
+            data = capture.get_data_and_size()
 
-        cmd = input_line
-        args = None
-        if " " in input_line:
-            cmd, args = input_line.split(" ", 1)
-        cmd = cmd.lower()
+            if ffmpeg_proc.poll() is None:
+                ffmpeg_proc.stdin.write(memoryview(data).tobytes())
+
+            continue
 
         if cmd == "h":
             log("Available commands:")
@@ -418,6 +449,13 @@ def run_interactive(camera_id=None, output_file=sys.stdout, photo_directory=".")
         yaml.dump(config, output_file)
     elif tty:
         log("No shots were taken, no need to save the config")
+
+    # Kill ffmpeg
+    ffmpeg_proc.terminate()
+    try:
+        ffmpeg_proc.wait(3)
+    except subprocess.TimeoutExpired:
+        ffmpeg_proc.kill()
 
     if tty:
         log("Bye bye!")
