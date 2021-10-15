@@ -3,6 +3,8 @@ import ReactDOM from 'react-dom';
 import './index.css';
 import reportWebVitals from './reportWebVitals';
 import { Box, Provider, Navbar, Link, Form} from 'rendition';
+import ReactPlayer from 'react-player';
+
 
 ReactDOM.render(
     <Provider>
@@ -18,6 +20,7 @@ ReactDOM.render(
     </Link>
     </Navbar>
     <Box my={3} mx={['auto', 15]}>
+    <ReactPlayer url='http://0.0.0.0:8080/autophoto.mjpg' />
     <div>
     <Form
     submitButtonText="Shoot!"
