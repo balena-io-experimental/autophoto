@@ -49,33 +49,36 @@ ReactDOM.render(
     }
     schema={{
 	properties: {
-	    Direction: {
+	    Rotation: {
+		title : 'Rotation',
 		oneOf: [
 		    {
-			const: 'CW',
-			title: 'Clockwise'
+			const : '-5',
+			title: '-5'
 		    },
 		    {
-			const: 'CCW',
-			title: 'Counter clockwise'
-		    }
-		],
-		type: 'string'
-	    },
-	    Speed: {
-		title : 'Rotation speed',
-		oneOf: [
+			const: '-3',
+			title: '-3'
+		    },
+		    {
+			const: '-1',
+			title: '-1'
+		    },
 		    {
 			const : '0',
 			title: '0'
 		    },
 		    {
-			const: '0.5',
-			title: '0.5'
+			const : '1',
+			title: '1'
 		    },
 		    {
-			const: '1',
-			title: '1'
+			const: '3',
+			title: '3'
+		    },
+		    {
+			const: '5',
+			title: '5'
 		    }
 		],
 		type:'string'
@@ -84,31 +87,31 @@ ReactDOM.render(
 		title : 'Lens Focus',
 		oneOf: [
 		    {
-			const: 'n1',
+			const: 'Near 1',
 			title: 'Near 1'
 		    },
 		    {
-			const: 'n2',
+			const: 'Near 2',
 			title: 'Near 2'
 		    },
 		    {
-			const: 'n3',
+			const: 'Near 3',
 			title: 'Near 3'
 		    },
 		    {
-			const: '0',
+			const: 'None',
 			title: 'None'
 		    },
 		    {
-			const: 'f1',
+			const: 'Far 1',
 			title: 'Far 1'
 		    },
 		    {
-			const: 'f2',
+			const: 'Far 2',
 			title: 'Far 2'
 		    },
 		    {
-			const: 'f3',
+			const: 'Far 3',
 			title: 'Far 3'
 		    }
 		],
@@ -182,7 +185,7 @@ ReactDOM.render(
 	    ISO : {
 		oneOf:[
 		    {
-			const : 'auto',
+			const : 'Auto',
 			      title: 'Auto'
 		    }
 		],

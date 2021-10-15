@@ -21,6 +21,22 @@ app.use (express.static('webui/build/'));
 app.post('/api', (req, res) => {
     console.log(req.body);
     myShellScript.stdin.cork();
+
+    if ("Aperture" in req.body)
+        myShellScript.stdin.write('a ' + req.body.Aperture + '\n');
+
+    if ("Exposure" in req.body)
+        myShellScript.stdin.write('e ' + req.body.Exposure + '\n');
+
+    if ("Focus" in req.body)
+        myShellScript.stdin.write('f ' + req.body.Focus + '\n');
+
+    if ("ISO" in req.body)
+        myShellScript.stdin.write('i ' + req.body.ISO + '\n');
+
+    if ("Rotation" in req.body)
+        myShellScript.stdin.write('r ' + req.body.Rotation + '\n');
+
     myShellScript.stdin.write('c\n');
     myShellScript.stdin.uncork();
     res.send('API OK')
