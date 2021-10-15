@@ -1,0 +1,35 @@
+output:
+  file: ./photo_%d.jpg
+
+shots:
+- camera:
+    zoom: "#ignored-for-now"
+    focus: "Near 1"
+    iso: "100"
+    aperture: "10"
+    exposure: "2"
+    format: "#ignored-for-now"
+
+  mount:
+    height: 100
+    tilt: 120
+
+  table:
+    angle: 60
+
+  light:
+    enabled: true
+    intensity: 100
+    temperature: 5000
+
+- camera:
+    focus: "Near 2"
+    iso: "200"
+    aperture: "10"
+    exposure: "1"
+
+- camera:
+    focus: "Far 1"
+    iso: "400"
+    aperture: "10"
+    exposure: "0.5"
