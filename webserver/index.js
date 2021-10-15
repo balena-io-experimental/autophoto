@@ -1,11 +1,12 @@
 const express = require('express')
 const serveIndex = require('serve-index');
 const app = express()
-const port = 8080
+const port = 80
 const { execSync } = require("child_process");
-
+app.use(express.json());
 app.use (express.static('webui/build/'));
-app.get('/api', (req, res) => {
+app.post('/api', (req, res) => {
+    console.log(req.body);
     const exec = require('child_process').exec;
     const myShellScript = exec('./autophoto -h');
     myShellScript.stdout.on('data', (data)=>{
